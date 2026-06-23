@@ -9,6 +9,7 @@ A userscript for [Torn](https://www.torn.com) that predicts your gym gains from 
 - Auto-fills your stats, happy, energy, and perks from your API key
 - Auto-selects the gym you're currently in
 - Parses faction, property, education, book, job, and merit perks into the gain multipliers
+- Includes a what-if calculator: override energy, happy, and perk percentage to model a scenario without changing your account
 
 ## Install
 
@@ -44,6 +45,8 @@ Paste it into the settings panel (the gear icon) and click Save. The field masks
 4. Read the two tables: your selected gym's gains, and the best gym per stat.
 
 The live line shows your current happy and energy and how much energy the prediction is simulating. Hit Refresh from API after you train to pull fresh numbers.
+
+To model a scenario, tick the what-if calculator and fill any of the three fields: energy, happy, or total perk percentage. Both tables recompute as you type, and the readout shows a calc mode tag. Leave a field blank and it uses your live value for that one, so you can change happy alone and keep your real stats and perks. Your typed values persist between sessions. Untick the box to return to live numbers.
 
 ## Accuracy and limits
 

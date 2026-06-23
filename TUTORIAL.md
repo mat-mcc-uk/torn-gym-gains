@@ -30,6 +30,14 @@ Never use someone else's key and never share yours. The key stays in your usersc
 
 The live line shows your happy, energy, and how much energy the prediction is simulating. Change the energy field to model a different amount, like a single refill or a happy jump bar.
 
+## The what-if calculator
+
+Tick the what-if calculator to override the live values and model a scenario. Three fields: energy, happy, and total perk percentage. Type into any of them and both tables update.
+
+A blank field uses your live value. So you can type 99999 into happy and leave the rest blank to see what a full happy jump gains you at your real stats and perks. Type 30 into perk percentage to see what reaching plus 30 percent gym gains would do. The readout shows a calc mode tag while the calculator is on.
+
+The perk field is a single percentage applied to all four stats. Your live perks can differ per stat, but for a scenario a single number is easier to reason about. Untick the box to go back to live numbers. Typed values are saved between sessions.
+
 ## How the prediction works
 
 It uses the Vladar/Darkkk formula:
@@ -65,6 +73,14 @@ The best-gym comparison shows what each gym would give, including specialist and
 **My perks don't look like they're counted.**
 
 The script parses perk text from the API. Most perks follow a standard format and parse fine, but an unusual wording could be missed. If your gains look off and you have stat-specific gym perks, that's the first thing to check. Tell me the exact perk text and I'll add the case.
+
+**How do I model a different happy or energy without spending it?**
+
+Tick the what-if calculator and type the values you want into the energy, happy, or perk fields. The tables recompute without touching your account. A blank field uses your live value, so you can change one thing and hold the rest. Untick the box to return to live numbers.
+
+**Does the calculator change my real stats?**
+
+No. It only changes the numbers the prediction uses. Your account is untouched. The readout shows a calc mode tag so you can tell modelled numbers from live ones.
 
 **Does happy decay matter?**
 
