@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Gym Gains Predictor
 // @namespace    mcc.torn.gym-gains
-// @version      1.1.0
+// @version      1.2.0
 // @description  Predicts gym gains from your live stats, happy, energy and perks. Compares all gyms and simulates a full energy bar with happy decay.
 // @author       Mat
 // @homepageURL  https://github.com/mat-mcc-uk/torn-gym-gains
@@ -312,8 +312,15 @@
     #tgg-panel input, #tgg-panel button, #tgg-panel select {
       font-size: 11px; padding: 2px 5px; margin: 2px 0;
     }
+    #tgg-panel input, #tgg-panel select {
+      background: #2b2b2b; color: #f0f0f0; border: 1px solid #555; border-radius: 3px;
+    }
+    #tgg-panel button {
+      background: #3a3a3a; color: #f0f0f0; border: 1px solid #666; border-radius: 3px; cursor: pointer;
+    }
+    #tgg-panel button:hover { background: #4a4a4a; }
     #tgg-panel .tgg-toggle {
-      cursor: pointer; background: none; border: none; color: #aaa; font-size: 14px;
+      cursor: pointer; background: none; border: none; color: #ccc; font-size: 14px;
     }
     #tgg-panel .tgg-status { color: #888; font-size: 11px; margin-bottom: 6px; }
     #tgg-panel .tgg-best { color: #9fe8b0; }
