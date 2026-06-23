@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Gym Gains Predictor
 // @namespace    mcc.torn.gym-gains
-// @version      1.0.0
+// @version      1.1.0
 // @description  Predicts gym gains from your live stats, happy, energy and perks. Compares all gyms and simulates a full energy bar with happy decay.
 // @author       Mat
 // @homepageURL  https://github.com/mat-mcc-uk/torn-gym-gains
@@ -105,6 +105,33 @@
   ];
 
   let selectedGymId = GM_getValue('selectedGymId', 8); // default Global Gym
+
+  // Calculator overrides. When calcMode is on, render uses these typed values
+  // instead of the live API ones, so you can model scenarios without changing
+  // your account. null inside a field means "use the live value for this".
+  let calc = {
+    on: GM_getValue('calcOn', false),
+    energy: GM_getValue('calcEnergy', null),   // number or null
+    happy: GM_getValue('calcHappy', null),     // number or null
+    perkPct: GM_getValue('calcPerkPct', null), // total gym-gain perk %, or null
+  };
+
+  // Resolve the values render should use: overrides when calc mode is on and
+  // the field is set, otherwise the live value. perkMult is per stat.
+  function effectiveEnergy() {
+    if (calc.on && calc.energy != null && calc.energy > 0) return calc.energy;
+    const typed = parseInt((document.getElementById('tgg-energy') || {}).value, 10);
+    if (typed > 0) return typed;
+    return live.energy || 0;
+  }
+  function effectiveHappy() {
+    if (calc.on && calc.happy != null) return calc.happy;
+    return live.happy;
+  }
+  function effectivePerk(stat) {
+    if (calc.on && calc.perkPct != null) return 1 + calc.perkPct / 100;
+    return live.perks[stat];
+  }
 
   // ---------------------------------------------------------------------
   // Data fetching
@@ -216,16 +243,16 @@
   // solely at multi-billion stats, and its exact form isn't public).
   const STAT_SOFT_CAP = 50000000;
 
-  function singleTrainGain(stat, statTotal, happy, dots, energyPerTrain) {
+  function singleTrainGain(stat, statTotal, happy, dots, energyPerTrain, perkMult) {
     if (dots <= 0) return 0;
     const s = Math.min(statTotal, STAT_SOFT_CAP);
     const base = dots * 4 * (FORMULA_A * s + FORMULA_B * happy + FORMULA_C);
-    return (base * live.perks[stat]) / FORMULA_DIV * energyPerTrain;
+    return (base * perkMult) / FORMULA_DIV * energyPerTrain;
   }
 
   // Simulate spending `energy` on one stat in one gym, train by train, letting
   // happy decay each train. Returns { totalGain, trains, endHappy }.
-  function simulateBar(stat, gym, energy, startHappy, startStat) {
+  function simulateBar(stat, gym, energy, startHappy, startStat, perkMult) {
     const ept = gym.energy;
     const dots = gym.dots[stat];
     if (dots <= 0 || ept <= 0) return { totalGain: 0, trains: 0, endHappy: startHappy };
@@ -237,7 +264,7 @@
     const dH = Math.round(HAPPY_LOSS_FACTOR * ept);
 
     for (let i = 0; i < trains; i++) {
-      const g = singleTrainGain(stat, statTotal, happy, dots, ept);
+      const g = singleTrainGain(stat, statTotal, happy, dots, ept, perkMult);
       total += g;
       statTotal += g; // stat grows as you train, feeding back into the formula
       happy = Math.max(0, happy - dH);
@@ -292,6 +319,9 @@
     #tgg-panel .tgg-best { color: #9fe8b0; }
     #tgg-panel .tgg-settings { border-top: 1px solid #333; margin: 6px 0; padding-top: 6px; }
     #tgg-panel .tgg-settings.tgg-hidden { display: none; }
+    #tgg-panel .tgg-hidden { display: none; }
+    #tgg-panel .tgg-calc { border-top: 1px solid #333; padding-top: 6px; }
+    #tgg-panel .tgg-calc input { width: auto; }
     #tgg-panel .tgg-live { font-size: 11px; color: #9fb8e8; margin-bottom: 6px; }
     @media (max-width: 784px) {
       #tgg-panel {
@@ -338,6 +368,34 @@
           Energy to spend:
           <input id="tgg-energy" type="number" min="0" style="width:70px" value="0">
           <button id="tgg-refresh">Refresh from API</button>
+        </div>
+
+        <div class="tgg-calc" id="tgg-calc" style="margin-top:8px">
+          <label style="font-weight:bold">
+            <input type="checkbox" id="tgg-calc-on"${calc.on ? ' checked' : ''}>
+            What-if calculator
+          </label>
+          <div id="tgg-calc-fields" class="${calc.on ? '' : 'tgg-hidden'}" style="margin-top:4px">
+            <div style="color:#888;margin-bottom:4px">
+              Override the live values to model a scenario. Blank means use live.
+            </div>
+            <div>
+              Energy:
+              <input id="tgg-calc-energy" type="number" min="0" style="width:70px"
+                     placeholder="live" value="${calc.energy != null ? calc.energy : ''}">
+            </div>
+            <div>
+              Happy:
+              <input id="tgg-calc-happy" type="number" min="0" style="width:80px"
+                     placeholder="live" value="${calc.happy != null ? calc.happy : ''}">
+            </div>
+            <div>
+              Total perk %:
+              <input id="tgg-calc-perk" type="number" step="0.1" style="width:60px"
+                     placeholder="live" value="${calc.perkPct != null ? calc.perkPct : ''}">
+              <span style="color:#888">e.g. 16 for +16% gym gains</span>
+            </div>
+          </div>
         </div>
 
         <div style="margin-top:8px">
@@ -398,6 +456,33 @@
 
     document.getElementById('tgg-energy').addEventListener('input', render);
     document.getElementById('tgg-refresh').addEventListener('click', refresh);
+
+    // Calculator: toggle on/off, and read the three override fields. A blank
+    // field stores null so render falls back to the live value for it.
+    document.getElementById('tgg-calc-on').addEventListener('change', (e) => {
+      calc.on = e.target.checked;
+      GM_setValue('calcOn', calc.on);
+      document
+        .getElementById('tgg-calc-fields')
+        .classList.toggle('tgg-hidden', !calc.on);
+      render();
+    });
+
+    const readCalcField = (id, key, storeKey) => {
+      const raw = document.getElementById(id).value.trim();
+      calc[key] = raw === '' ? null : parseFloat(raw);
+      GM_setValue(storeKey, calc[key]);
+      render();
+    };
+    document
+      .getElementById('tgg-calc-energy')
+      .addEventListener('input', () => readCalcField('tgg-calc-energy', 'energy', 'calcEnergy'));
+    document
+      .getElementById('tgg-calc-happy')
+      .addEventListener('input', () => readCalcField('tgg-calc-happy', 'happy', 'calcHappy'));
+    document
+      .getElementById('tgg-calc-perk')
+      .addEventListener('input', () => readCalcField('tgg-calc-perk', 'perkPct', 'calcPerkPct'));
   }
 
   function fmt(n) {
@@ -406,28 +491,25 @@
     return n.toFixed(2);
   }
 
-  function getEnergyInput() {
-    const v = parseInt(document.getElementById('tgg-energy').value, 10);
-    if (v > 0) return v;
-    return live.energy || 0;
-  }
-
   function render() {
     if (!live.loaded) return;
-    const energy = getEnergyInput();
+    const energy = effectiveEnergy();
+    const happy = effectiveHappy();
     const gym = GYMS.find((g) => g.id === selectedGymId);
 
-    // Selected gym table: per-train (at current happy) and full-bar sim.
+    // Selected gym table: per-train (at the effective happy) and full-bar sim.
     const selBody = document.getElementById('tgg-selected');
     selBody.innerHTML = STATS.map((stat) => {
+      const pm = effectivePerk(stat);
       const per = singleTrainGain(
         stat,
         live.stats[stat],
-        live.happy,
+        happy,
         gym.dots[stat],
-        gym.energy
+        gym.energy,
+        pm
       );
-      const sim = simulateBar(stat, gym, energy, live.happy, live.stats[stat]);
+      const sim = simulateBar(stat, gym, energy, happy, live.stats[stat], pm);
       return `<tr>
         <td>${STAT_LABEL[stat]}</td>
         <td class="tgg-num">${fmt(per)}</td>
@@ -438,10 +520,11 @@
     // Best gym per stat by full-bar gain.
     const bestBody = document.getElementById('tgg-best');
     bestBody.innerHTML = STATS.map((stat) => {
+      const pm = effectivePerk(stat);
       let best = null;
       for (const g of GYMS) {
         if (g.dots[stat] <= 0) continue;
-        const sim = simulateBar(stat, g, energy, live.happy, live.stats[stat]);
+        const sim = simulateBar(stat, g, energy, happy, live.stats[stat], pm);
         if (!best || sim.totalGain > best.gain) {
           best = { name: g.name, gain: sim.totalGain };
         }
@@ -457,9 +540,12 @@
 
     const liveEl = document.getElementById('tgg-live');
     const overCap = STATS.some((s) => live.stats[s] > STAT_SOFT_CAP);
+    const usingCalc = calc.on;
     liveEl.innerHTML =
-      `Happy ${live.happy.toLocaleString()}/${live.maxHappy.toLocaleString()} · ` +
-      `Energy ${live.energy}/${live.maxEnergy} · simulating ${energy}e` +
+      `Happy ${happy.toLocaleString()}` +
+      (usingCalc ? '' : `/${live.maxHappy.toLocaleString()}`) +
+      ` · Energy ${live.energy}/${live.maxEnergy} · simulating ${energy}e` +
+      (usingCalc ? ` · <span style="color:#e0a060">calc mode</span>` : '') +
       (overCap
         ? `<div style="color:#e0a060;margin-top:3px">A stat is above the 50m soft cap. Predictions under-read above 50m because Torn's post-cap growth isn't public. Treat high-stat numbers as a floor.</div>`
         : '');
