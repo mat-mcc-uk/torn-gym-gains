@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Gym Gains Predictor
 // @namespace    mcc.torn.gym-gains
-// @version      1.2.0
+// @version      1.3.0
 // @description  Predicts gym gains from your live stats, happy, energy and perks. Compares all gyms and simulates a full energy bar with happy decay.
 // @author       Mat
 // @homepageURL  https://github.com/mat-mcc-uk/torn-gym-gains
@@ -590,7 +590,10 @@
   // ---------------------------------------------------------------------
 
   function onGymPage() {
-    return /[?&#]sid=gym\b/.test(location.href);
+    // Torn's gym lives at gym.php (not page.php?sid=gym). Match that anywhere
+    // in the URL so it works for plain, query-string, and PDA hash-routed
+    // forms. Keep sid=gym as a fallback in case of future SPA routing.
+    return /gym\.php/.test(location.href) || /[?&#]sid=gym\b/.test(location.href);
   }
 
   function ensurePanel() {
